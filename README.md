@@ -79,7 +79,7 @@ const Reinstate Trigger = "Reinstate"
  Below, a state machine is created describing a set of states an order can progress through along with the triggers that can be used.
 
 ```go
-p := plinko.CreateDefinition()
+p := config.CreatePlinkoDefinition()
 
 p.Configure(Created).
    OnEntry(OnNewOrderEntry).
@@ -111,6 +111,27 @@ p.Configure(Canceled).
    Permit(Reinstate, Created)
 	
 p.Configure(Returned)
+
+---
+
+p.Configure(FinancePending).
+  PermitDynamic(Approve,Approved,DetermineFinanceRoute).
+  Permit(Reject,Rejected)
+
+
+
+func DetermineFinanceRoute(ctx context.Context,payload plinko.Payload,info plinko.TransitionInfo)(plinko.State,error) {
+  expense := payload.(*Expense)
+  if expense.Amount >= 5000 {
+
+    return DirectorPending,nil
+  }
+
+  return Approved,nil
+}
+
+
+
 ```
 
 Once created, the next step is compiling the state machine.  This means the state machine is validated for complete-ness.  At this stage, Errors and Warnings are raised.  This incidentally allows the state machine definition to be fully testable in the build pipeline before deployment.
