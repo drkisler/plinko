@@ -72,11 +72,9 @@ func (psm plinkoStateMachine) Fire(ctx context.Context, payload plinko.Payload, 
 		return payload, plinkoerror.CreatePlinkoTriggerError(trigger, fmt.Sprintf("Trigger '%s' not found in definition for state: %s", trigger, state))
 	}
 
-	destinationState := (*psm.pd.States)[triggerData.DestinationState]
-
 	td := &sideeffects.TransitionDef{
 		Source:      state,
-		Destination: destinationState.State,
+		Destination: triggerData.DestinationState,
 		Trigger:     trigger,
 	}
 
@@ -84,6 +82,35 @@ func (psm plinkoStateMachine) Fire(ctx context.Context, payload plinko.Payload, 
 		if err := triggerData.Predicate(ctx, payload, td); err != nil {
 			return payload, plinkoerror.CreatePlinkoTriggerError(trigger, fmt.Sprintf("Conditional Trigger '%s' conditions not met for state: %s", trigger, state))
 		}
+	}
+	if triggerData.DynamicResolver != nil {
+
+		dynamicState, err :=
+			triggerData.DynamicResolver(
+				ctx,
+				payload,
+				td,
+			)
+
+		if err != nil {
+			return payload, err
+		}
+
+		td.SetDestination(dynamicState)
+	}
+	destinationState :=
+		(*psm.pd.States)[td.GetDestination()]
+
+	if destinationState == nil {
+
+		return payload,
+			plinkoerror.CreatePlinkoStateError(
+				td.GetDestination(),
+				fmt.Sprintf(
+					"Destination state '%s' not found",
+					td.GetDestination(),
+				),
+			)
 	}
 
 	sideeffects.Dispatch(ctx, plinko.BeforeTransition, psm.pd.SideEffects, payload, td, time.Since(start).Milliseconds())
@@ -108,11 +135,12 @@ func (psm plinkoStateMachine) Fire(ctx context.Context, payload plinko.Payload, 
 		var errSub error
 
 		payload, mtd, errSub := destinationState.Callbacks.ExecuteErrorChain(ctx, payload, td, err, time.Since(start).Milliseconds())
-		_ = &sideeffects.TransitionDef{
-			Source:      mtd.GetSource(),
-			Destination: mtd.GetDestination(),
-			Trigger:     mtd.GetTrigger(),
-		}
+		td = mtd
+		/*		_ = &sideeffects.TransitionDef{
+				Source:      mtd.GetSource(),
+				Destination: mtd.GetDestination(),
+				Trigger:     mtd.GetTrigger(),
+			}*/
 
 		if errSub != nil {
 			err = errSub

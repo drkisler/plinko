@@ -168,6 +168,12 @@ func (sd InternalStateDefinition) PermitIf(predicate plinko.Predicate, trigger p
 	return sd
 }
 
+func (sd InternalStateDefinition) PermitDynamic(trigger plinko.Trigger, defaultState plinko.State, resolver plinko.DynamicResolver) plinko.StateDefinition {
+	addDynamicPermit(&sd, trigger, defaultState, resolver)
+
+	return sd
+}
+
 type AbstractSyntax struct {
 	States             []plinko.State
 	TriggerDefinitions []TriggerDefinition
@@ -229,10 +235,36 @@ type TriggerDefinition struct {
 	Name             plinko.Trigger
 	DestinationState plinko.State
 	Predicate        func(context.Context, plinko.Payload, plinko.TransitionInfo) error
+	DynamicResolver  plinko.DynamicResolver
 }
 
 type PlinkoDataStructure struct {
 	States map[plinko.State]plinko.StateDefinition
+}
+
+func addDynamicPermit(sd *InternalStateDefinition, trigger plinko.Trigger, defaultState plinko.State, resolver plinko.DynamicResolver) {
+	if _, ok := sd.Triggers[trigger]; ok {
+		panic(
+			fmt.Sprintf(
+				"Trigger: %s - has already been defined",
+				trigger,
+			),
+		)
+	}
+
+	td := TriggerDefinition{
+		Name:             trigger,
+		DestinationState: defaultState,
+		DynamicResolver:  resolver,
+	}
+
+	sd.Triggers[trigger] = &td
+
+	sd.Abs.TriggerDefinitions =
+		append(
+			sd.Abs.TriggerDefinitions,
+			td,
+		)
 }
 
 func addPermit(sd *InternalStateDefinition, trigger plinko.Trigger, destination plinko.State, predicate func(context.Context, plinko.Payload, plinko.TransitionInfo) error) {

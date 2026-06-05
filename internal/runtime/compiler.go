@@ -19,6 +19,9 @@ func (pd PlinkoDefinition) Compile() plinko.CompilerOutput {
 	var compilerMessages []plinko.CompilerMessage
 
 	for _, def := range pd.Abs.TriggerDefinitions {
+		if def.DynamicResolver != nil {
+			continue
+		}
 		if !findDestinationState(pd.Abs.States, def.DestinationState) {
 			compilerMessages = append(compilerMessages, plinko.CompilerMessage{
 				CompileMessage: plinko.CompileError,

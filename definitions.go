@@ -12,6 +12,8 @@ type TriggerPredicate func(context.Context, Payload, TransitionInfo) bool
 type Operation func(context.Context, Payload, TransitionInfo) (Payload, error)
 type ErrorOperation func(context.Context, Payload, ModifiableTransitionInfo, error) (Payload, error)
 
+type DynamicResolver func(context.Context, Payload, TransitionInfo) (State, error)
+
 type StateDefinition interface {
 	//State() string
 	OnEntry(Operation, ...OperationOption) StateDefinition
@@ -23,6 +25,7 @@ type StateDefinition interface {
 	PermitIf(Predicate, Trigger, State) StateDefinition
 	PermitReentry(Trigger) StateDefinition
 	PermitReentryIf(Predicate, Trigger) StateDefinition
+	PermitDynamic(Trigger, State, DynamicResolver) StateDefinition
 }
 
 type StateMachine interface {
