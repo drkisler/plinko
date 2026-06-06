@@ -115,9 +115,9 @@ p.Configure(Canceled).
    Permit(Reinstate, Created)
 	
 p.Configure(Returned)
-
----
-
+```
+Add new function PermitDynamic.
+```
 p.Configure(FinancePending).
   PermitDynamic(Approve,Approved,DetermineFinanceRoute).
   Permit(Reject,Rejected)
