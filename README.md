@@ -1,8 +1,6 @@
-以下是修正语法错误后的 Markdown 文档，主要修复了代码块未闭合、标题前缺少空行、语言标识后多余空格以及一处英文拼写错误：
-
 ```markdown
 # Plinko - a Fluent State Machine for Go
-
+## forked from clackiverse/plinko-1
 
 [![Build Status](https://drone.shipt.com/api/badges/shipt/plinko/status.svg)](https://drone.shipt.com/shipt/plinko) [![codecov](https://codecov.io/gh/shipt/plinko/branch/main/graph/badge.svg?token=8UX649KGGV)](https://codecov.io/gh/shipt/plinko) Build Status
 
@@ -40,13 +38,13 @@ Some useful extensions are also provided:
 
 Using Plinko is easy.   First, use `go get` to install the latest version of the library.  This command will install everything you need - in fact, one design goal of Plinko is to minimize dependencies.  There are no runtime dependencies required for Plinko, and the only dependencies used by the project are used for unit testing.
 
-```go get -u github.com/shipt/plinko
+```go get -u github.com/drkisler/plinko
 ```
 
 Next, include Plinko in your application:
 
 ```
-import "github.com/shipt/plinko"
+import "github.com/drkisler/plinko"
 ```
 
 You will define state machine using the examples below, and compiling the state machine once to reuse again and again.  Efficiency is front of mind,  meaning the compilation process is fast and runs in far less than 1/10,000th of a second on a reasonable VM. Or, given a single thread on an x86 processor, a statemachine can be fully compiled and ready to run more than 10,000,000 times a second.
