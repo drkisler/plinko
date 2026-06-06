@@ -387,7 +387,7 @@ fmt.Println(string(uml))
 
 ![PlantUML Rendered State Diagram](./docs/sample_state_diagram.png)
 
-
+---
 # 补充
 
 ## 状态与触发器的定义及配置
