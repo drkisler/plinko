@@ -1,3 +1,4 @@
+// plinko/internal/sideeffects/dispatch.go
 /**
  * Copyright (c) Shipt.
  *
@@ -12,17 +13,17 @@ import (
 	"github.com/drkisler/plinko"
 )
 
-// AllowAllSideEffects is a convenience constant for registering a global
+// AllowAllSideEffects 是一个便捷常量，表示注册为全局副作用（所有阶段都触发）。
 const AllowAllSideEffects = plinko.AllowBeforeTransition | plinko.AllowAfterTransition | plinko.AllowBetweenStates
 
-// SideEffectDefinition holds the callback and filtering characteristics describing when the sideeffect is signaled.
+// SideEffectDefinition 保存副作用函数及其触发阶段的过滤器。
 type SideEffectDefinition struct {
 	SideEffect plinko.SideEffect
 	Filter     plinko.SideEffectFilter
 }
 
+// getFilterDefinition 将 StateAction 映射为对应的 SideEffectFilter 位。
 func getFilterDefinition(stateAction plinko.StateAction) plinko.SideEffectFilter {
-
 	switch stateAction {
 	case plinko.BeforeTransition:
 		return plinko.AllowBeforeTransition
@@ -31,47 +32,27 @@ func getFilterDefinition(stateAction plinko.StateAction) plinko.SideEffectFilter
 	case plinko.AfterTransition:
 		return plinko.AllowAfterTransition
 	}
-
 	return 0
 }
 
-// TransitionDef is used to notify the registered function of a transition occuring
+// TransitionDef 是 sideeffects 包内部使用的转换定义，实现了 TransitionInfo 和 ModifiableTransitionInfo 接口。
 type TransitionDef struct {
 	Source      plinko.State
 	Destination plinko.State
 	Trigger     plinko.Trigger
 }
 
-// GetSource returns the Source / Starting state
-func (td TransitionDef) GetSource() plinko.State {
-	return td.Source
-}
+func (td TransitionDef) GetSource() plinko.State            { return td.Source }
+func (td TransitionDef) GetDestination() plinko.State       { return td.Destination }
+func (td *TransitionDef) SetDestination(state plinko.State) { td.Destination = state }
+func (td TransitionDef) GetTrigger() plinko.Trigger         { return td.Trigger }
 
-// GetDestination returns the Destination State that's part of the process being executed.
-func (td TransitionDef) GetDestination() plinko.State {
-	return td.Destination
-}
-
-// SetDestination ...
-// sets the destination state, this method is only exposed when ModifiableTransitionInfo
-// is referenced.
-func (td *TransitionDef) SetDestination(state plinko.State) {
-	td.Destination = state
-}
-
-// GetTrigger returns the Trigger used to launch the transition
-func (td TransitionDef) GetTrigger() plinko.Trigger {
-	return td.Trigger
-}
-
-// Dispatch is responsible for executing a set of side effect definitions when called upon.  It is sensitive to the definition
-//
-//	in terms of what is called.
+// Dispatch 遍历副作用列表，根据过滤器决定是否在给定阶段执行副作用函数。
+// 返回实际执行的副作用数量。
 func Dispatch(ctx context.Context, stateAction plinko.StateAction, sideEffects []SideEffectDefinition, payload plinko.Payload, transitionInfo plinko.TransitionInfo, elapsedMilliseconds int64) int {
 	iCount := 0
 	for _, sideEffectDefinition := range sideEffects {
 		if sideEffectDefinition.Filter&getFilterDefinition(stateAction) > 0 {
-
 			sideEffectDefinition.SideEffect(ctx, stateAction, payload, transitionInfo, elapsedMilliseconds)
 			iCount++
 		}

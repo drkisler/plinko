@@ -1,3 +1,4 @@
+// plinko/pkg/config/operation/opts.go
 /**
  * Copyright (c) Shipt.
  *
@@ -6,10 +7,9 @@
  */
 package operation
 
-import (
-	"github.com/drkisler/plinko"
-)
+import "github.com/drkisler/plinko"
 
+// WithName 返回一个 OperationOption，用于设置操作名称。
 func WithName(name string) func(*plinko.OperationConfig) {
 	return func(c *plinko.OperationConfig) {
 		c.Name = name

@@ -1,3 +1,5 @@
+// plinko/pkg/config/state/opts.go
+
 /**
  * Copyright (c) Shipt.
  *
@@ -8,12 +10,14 @@ package state
 
 import "github.com/drkisler/plinko"
 
+// WithName 设置状态的显示名称。
 func WithName(name string) func(*plinko.StateConfig) {
 	return func(c *plinko.StateConfig) {
 		c.Name = name
 	}
 }
 
+// WithDescription 设置状态的描述信息。
 func WithDescription(description string) func(*plinko.StateConfig) {
 	return func(c *plinko.StateConfig) {
 		c.Description = description

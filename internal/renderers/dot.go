@@ -1,3 +1,4 @@
+// plinko/internal/renderers/dot.go
 /**
  * Copyright (c) Shipt.
  *
@@ -15,11 +16,13 @@ import (
 	"github.com/drkisler/plinko"
 )
 
+// Dot 渲染器，输出 DOT 格式。
 type Dot struct {
-	*writeWrapper
-	style dotStylesheet
+	*writeWrapper               // 带错误缓存的写入器
+	style         dotStylesheet // DOT 样式模板
 }
 
+// NewDot 创建一个新的 DOT 渲染器。
 func NewDot(w io.Writer) *Dot {
 	return &Dot{
 		writeWrapper: &writeWrapper{writer: w},
@@ -27,11 +30,14 @@ func NewDot(w io.Writer) *Dot {
 	}
 }
 
+// Render 将图写入 DOT 格式。
 func (d *Dot) Render(graph plinko.Graph) error {
 	d.beginGraph()
+	// 遍历所有节点，写入节点定义
 	graph.Nodes(func(state plinko.State, info plinko.StateConfig) {
 		d.node(string(state), info.Name, info.Description)
 	})
+	// 遍历所有边，写入边定义
 	graph.Edges(func(state, destinationState plinko.State, name plinko.Trigger) {
 		d.edge(string(state), string(destinationState), string(name))
 	})
@@ -39,6 +45,7 @@ func (d *Dot) Render(graph plinko.Graph) error {
 	return d.err
 }
 
+// beginGraph 写入 DOT 图头及样式。
 func (d *Dot) beginGraph() {
 	d.write([]byte("digraph {\n"))
 	d.write([]byte(d.style.graphHeader))
@@ -47,24 +54,28 @@ func (d *Dot) beginGraph() {
 	d.write([]byte(d.style.defaults.edge))
 }
 
+// endGraph 结束图。
 func (d *Dot) endGraph() {
 	d.write([]byte("}\n"))
 }
 
+// edge 写入一条有向边。
 func (d *Dot) edge(a, b, label string) {
 	d.write([]byte(fmt.Sprintf(d.style.templates.edge, a, b, label)))
 }
 
+// node 写入一个节点，使用 HTML-like 标签来渲染名称和描述。
 func (d *Dot) node(name, label, description string) {
 	d.write([]byte(fmt.Sprintf(d.style.templates.node, name, label, description)))
 }
 
-// DotFileToImg runs the dot command to convert a dot file into an image file
+// DotFileToImg 调用系统 dot 命令将 DOT 文件转换为图片。
 func DotFileToImg(from, to, format string) error {
 	_, err := exec.Command("sh", "-c", "dot -T"+format+" "+from+" -o "+to).Output()
 	return err
 }
 
+// dotStylesheet 定义了 DOT 样式。
 type dotStylesheet struct {
 	graphHeader string
 	defaults    dotDefaultStyles
@@ -78,10 +89,11 @@ type dotDefaultStyles struct {
 }
 
 type dotTemplates struct {
-	node string
-	edge string
+	node string // 节点模板，%s 分别是 name, label, description
+	edge string // 边模板，%s 分别是 source, destination, label
 }
 
+// defaultDotStyle 是默认的 DOT 样式表，使用 fdp 布局，橙色圆角矩形。
 var defaultDotStyle = dotStylesheet{
 	graphHeader: `layout=fdp;
 overlap=false;
