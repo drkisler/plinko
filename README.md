@@ -386,7 +386,7 @@ fmt.Println(string(uml))
 ```
 
 ![PlantUML Rendered State Diagram](./docs/sample_state_diagram.png)
-```
+
 
 # 补充
 
@@ -394,7 +394,7 @@ fmt.Println(string(uml))
 
 ### 1. 创建状态机定义
 
-```go
+```
 import "github.com/drkisler/plinko/pkg/config"
 
 pd := config.CreatePlinkoDefinition()
