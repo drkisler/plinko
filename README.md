@@ -1,6 +1,5 @@
-```markdown
 # Plinko - a Fluent State Machine for Go
-## forked from clackiverse/plinko-1
+## forked from [clackiverse/plinko-1](https://github.com/clackiverse/plinko-1)
 
 [![Build Status](https://drone.shipt.com/api/badges/shipt/plinko/status.svg)](https://drone.shipt.com/shipt/plinko) [![codecov](https://codecov.io/gh/shipt/plinko/branch/main/graph/badge.svg?token=8UX649KGGV)](https://codecov.io/gh/shipt/plinko) Build Status
 
