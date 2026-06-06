@@ -23,3 +23,9 @@ func WithDescription(description string) func(*plinko.StateConfig) {
 		c.Description = description
 	}
 }
+
+func AsTerminal() func(*plinko.StateConfig) {
+	return func(c *plinko.StateConfig) {
+		c.Terminal = true
+	}
+}

@@ -36,6 +36,9 @@ func (pd PlinkoDefinition) Compile() plinko.CompilerOutput {
 
 	// 警告那些没有任何触发器的状态（死胡同）
 	for _, def := range pd.Abs.StateDefinitions {
+		if def.info.Terminal {
+			continue // 终态不检查 Trigger
+		}
 		if len(def.Triggers) == 0 {
 			compilerMessages = append(compilerMessages, plinko.CompilerMessage{
 				CompileMessage: plinko.CompileWarning,

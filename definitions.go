@@ -145,5 +145,6 @@ type OperationOption func(c *OperationConfig)
 type StateConfig struct {
 	Name        string
 	Description string
+	Terminal    bool
 }
 type StateOption func(c *StateConfig)

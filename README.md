@@ -388,9 +388,365 @@ fmt.Println(string(uml))
 ![PlantUML Rendered State Diagram](./docs/sample_state_diagram.png)
 ```
 
-**主要修正：**
-1. 将 `go get -u github.com/shipt/plinko` 的代码块结束符从单个反引号 `\`` 改为三个反引号 ` ``` `。
-2. 在 `# Introspection` 标题前添加空行，避免标题解析异常。
-3. 去掉所有 ` ```go ` 中语言标识后的多余空格（如 ` ```go ` 变为 ` ```go`），确保标准兼容。
-4. 将 “during it's lifecycle” 修正为 “during its lifecycle”（英文所有格错误）。
-5. 将 “responsiblities” 修正为 “responsibilities”。
+# 补充
+
+## 状态与触发器的定义及配置
+
+### 1. 创建状态机定义
+
+```go
+import "github.com/drkisler/plinko/pkg/config"
+
+pd := config.CreatePlinkoDefinition()
+```
+
+`CreatePlinkoDefinition()` 初始化一个内部的 `PlinkoDefinition`，持有状态映射表和抽象语法树。
+
+---
+
+### 2. 配置状态（Configure）
+
+```
+pd.Configure(plinko.State("Created"),
+    state.WithName("已创建"),
+    state.WithDescription("订单已创建，等待支付"),
+)
+```
+
+**⚠️ 同一个 State 不能重复 Configure，否则直接 panic：**
+
+```
+// internal/runtime/internal.go
+if _, ok := (*pd.States)[state]; ok {
+    panic(fmt.Sprintf("State: %s - has already been defined...", state))
+}
+```
+
+---
+
+### 3. 配置触发器（Permit 系列）
+
+| 方法 | 说明 |
+|---|---|
+| `Permit(trigger, dest)` | 无条件跳转 |
+| `PermitIf(predicate, trigger, dest)` | 带条件跳转，predicate 返回 error 时阻断 |
+| `PermitReentry(trigger)` | 重入当前状态 |
+| `PermitReentryIf(predicate, trigger)` | 带条件重入 |
+| `PermitDynamic(trigger, defaultDest, resolver)` | 运行时动态决定目标状态 |
+
+**⚠️ 同一状态内同一个 Trigger 不能重复定义，否则 panic：**
+
+```
+// addPermit / addDynamicPermit
+if _, ok := sd.Triggers[trigger]; ok {
+    panic(fmt.Sprintf("Trigger: %s - has already been defined...", trigger))
+}
+```
+
+---
+
+### 4. 配置回调（OnEntry / OnExit / OnError）
+
+```
+pd.Configure(plinko.State("Paid")).
+    OnEntry(handlePaymentEntry).
+    OnTriggerEntry("Cancel", handleCancelEntry).  // 仅特定触发器触发时执行
+    OnExit(handlePaidExit).
+    OnError(handleError).
+    Permit("Ship", plinko.State("Shipped")).
+    Permit("Cancel", plinko.State("Cancelled"))
+```
+
+回调执行顺序（见 `trigger.go` 的 `Fire` 方法）：
+
+```
+BeforeTransition SideEffect
+    → 源状态 ExitChain（OnExit / OnTriggerExit）
+        → 若 Exit 出错 → ErrorChain → 返回
+    → BetweenStates SideEffect
+    → 目标状态 EntryChain（OnEntry / OnTriggerEntry）
+        → 若 Entry 出错 → ErrorChain → 返回
+    → AfterTransition SideEffect
+```
+
+---
+
+## 如何避免 Compile() 的 panic、警告和错误
+
+### Panic（运行时直接崩溃，编译期无法检测）
+
+**原因一：重复 Configure 同一状态**
+```
+// ❌ 会 panic
+pd.Configure("Created")
+pd.Configure("Created") // panic!
+
+// ✅ 每个状态只配置一次
+created := pd.Configure("Created")
+```
+
+**原因二：同一状态重复定义同一 Trigger**
+```
+// ❌ 会 panic
+pd.Configure("Created").
+    Permit("Pay", "Paid").
+    Permit("Pay", "Cancelled") // panic! Pay 已定义
+```
+
+**原因三：回调链中 panic（被 recover 捕获，转为 PlinkoError）**
+
+`executeChain` 和 `executeErrorChain` 内部用 `defer recover()` 包裹，回调里的 panic 会被转换成带堆栈的 `PlinkoPanicError` 返回，不会崩溃程序，但需要在 `Fire()` 的返回值中检查 error。
+
+---
+
+### CompileError（Compile() 返回，不崩溃但状态机不可用）
+
+**原因：Trigger 指向了未定义的目标状态**
+
+```
+// ❌ "Shipped" 从未被 Configure，编译报错
+pd.Configure("Paid").
+    Permit("Ship", "Shipped") // CompileError: State 'Shipped' undefined
+
+// ✅ 确保所有 DestinationState 都被 Configure
+pd.Configure("Paid").Permit("Ship", "Shipped")
+pd.Configure("Shipped").Permit("Complete", "Done")  // Shipped 必须存在
+pd.Configure("Done")                                // Done 也必须存在
+```
+
+`PermitDynamic` 是例外——动态目标在运行时解析，Compile 阶段跳过检查：
+
+```
+// compiler.go
+if def.DynamicResolver != nil {
+    continue  // 动态路由不做编译期检查
+}
+```
+
+---
+
+### CompileWarning（Compile() 返回，状态机仍可用但逻辑可能有误）
+
+**原因：某个状态没有任何 Trigger（死端状态）**
+
+```
+// ⚠️ Warning: 'Done' is a state without any triggers (deadend state)
+pd.Configure("Done")
+
+// 如果这是故意的终态，可以忽略此警告
+// 可以通过检查 Messages 过滤处理：
+co := pd.Compile()
+for _, msg := range co.Messages {
+    if msg.CompileMessage == plinko.CompileError {
+        // 必须处理
+        log.Fatal(msg.Message)
+    }
+    if msg.CompileMessage == plinko.CompileWarning {
+        // 终态死端可以接受，按业务判断
+        log.Warn(msg.Message)
+    }
+}
+```
+
+---
+
+## 完整的安全使用模板
+
+```
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/pkg/config"
+	"github.com/drkisler/plinko/pkg/config/state"
+)
+
+// ─── 状态常量 ────────────────────────────────────────────────────────────────
+
+const (
+	StateCreated   plinko.State = "Created"
+	StatePaid      plinko.State = "Paid"
+	StateShipped   plinko.State = "Shipped"
+	StateDone      plinko.State = "Done"
+	StateCancelled plinko.State = "Cancelled"
+)
+
+// ─── 触发器常量 ───────────────────────────────────────────────────────────────
+
+const (
+	TriggerPay    plinko.Trigger = "Pay"
+	TriggerShip   plinko.Trigger = "Ship"
+	TriggerFinish plinko.Trigger = "Finish"
+	TriggerCancel plinko.Trigger = "Cancel"
+)
+
+// ─── Payload ─────────────────────────────────────────────────────────────────
+
+type OrderPayload struct {
+	OrderID string
+	State   plinko.State
+}
+
+func (o *OrderPayload) GetState() plinko.State {
+	return o.State
+}
+
+// ─── 回调函数 ─────────────────────────────────────────────────────────────────
+
+func onPaidEntry(ctx context.Context, p plinko.Payload, t plinko.TransitionInfo) (plinko.Payload, error) {
+	order := p.(*OrderPayload)
+	order.State = t.GetDestination() // 必须手动更新状态
+	log.Printf("[Entry] 订单 %s 已支付，来自状态: %s", order.OrderID, t.GetSource())
+	return order, nil
+}
+
+func onShippedEntry(ctx context.Context, p plinko.Payload, t plinko.TransitionInfo) (plinko.Payload, error) {
+	order := p.(*OrderPayload)
+	order.State = t.GetDestination()
+	log.Printf("[Entry] 订单 %s 已发货", order.OrderID)
+	return order, nil
+}
+
+func onCancelledEntry(ctx context.Context, p plinko.Payload, t plinko.TransitionInfo) (plinko.Payload, error) {
+	order := p.(*OrderPayload)
+	order.State = t.GetDestination()
+	log.Printf("[Entry] 订单 %s 已取消，触发器: %s", order.OrderID, t.GetTrigger())
+	return order, nil
+}
+
+func onCreatedExit(ctx context.Context, p plinko.Payload, t plinko.TransitionInfo) (plinko.Payload, error) {
+	log.Printf("[Exit] 离开 Created 状态，目标: %s", t.GetDestination())
+	return p, nil
+}
+
+func onErrorHandler(ctx context.Context, p plinko.Payload, t plinko.ModifiableTransitionInfo, err error) (plinko.Payload, error) {
+	log.Printf("[Error] 状态转换出错 %s -> %s，原因: %v",
+		t.GetSource(), t.GetDestination(), err)
+	// 返回 nil 表示错误已处理，继续流程；返回 err 则向上传递
+	return p, err
+}
+
+func onSideEffect(ctx context.Context, action plinko.StateAction, p plinko.Payload, t plinko.TransitionInfo, elapsedMs int64) {
+	log.Printf("[SideEffect] action=%s %s -> %s trigger=%s elapsed=%dms",
+		action, t.GetSource(), t.GetDestination(), t.GetTrigger(), elapsedMs)
+}
+
+// ─── 构建状态机 ───────────────────────────────────────────────────────────────
+
+func buildStateMachine() (plinko.StateMachine, error) {
+	pd := config.CreatePlinkoDefinition()
+
+	// 注册全局 SideEffect（可选）
+	pd.SideEffect(onSideEffect)
+
+	// Created：初始状态，可支付或取消
+	pd.Configure(StateCreated,
+		state.WithName("已创建"),
+		state.WithDescription("订单已创建，等待支付"),
+	).
+		OnExit(onCreatedExit).
+		OnError(onErrorHandler).
+		Permit(TriggerPay, StatePaid).
+		Permit(TriggerCancel, StateCancelled)
+
+	// Paid：已支付，可发货或取消
+	pd.Configure(StatePaid,
+		state.WithName("已支付"),
+		state.WithDescription("订单已支付，等待发货"),
+	).
+		OnEntry(onPaidEntry).
+		OnError(onErrorHandler).
+		Permit(TriggerShip, StateShipped).
+		Permit(TriggerCancel, StateCancelled)
+
+	// Shipped：已发货，可完成
+	pd.Configure(StateShipped,
+		state.WithName("已发货"),
+		state.WithDescription("订单已发货，等待签收"),
+	).
+		OnEntry(onShippedEntry).
+		OnError(onErrorHandler).
+		Permit(TriggerFinish, StateDone)
+
+	// Done：终态，标记 AsTerminal 消除 Warning
+	pd.Configure(StateDone,
+		state.WithName("已完成"),
+		state.WithDescription("订单已完成"),
+		state.AsTerminal(),
+	)
+
+	// Cancelled：终态，标记 AsTerminal 消除 Warning
+	pd.Configure(StateCancelled,
+		state.WithName("已取消"),
+		state.WithDescription("订单已取消"),
+		state.AsTerminal(),
+	).
+		OnEntry(onCancelledEntry).
+		OnError(onErrorHandler)
+
+	// ── 编译并检查 ──────────────────────────────────────────────────────────
+	co := pd.Compile()
+
+	for _, msg := range co.Messages {
+		switch msg.CompileMessage {
+		case plinko.CompileError:
+			// 有错误直接返回，状态机不可用
+			return nil, fmt.Errorf("状态机编译错误: %s", msg.Message)
+		case plinko.CompileWarning:
+			// 经过 AsTerminal 标记后，正常情况下不应再出现 Warning
+			// 若仍出现，说明有非预期的死端状态，记录日志
+			log.Printf("[Warning] 状态机编译警告: %s", msg.Message)
+		}
+	}
+
+	return co.StateMachine, nil
+}
+
+// ─── 主流程 ───────────────────────────────────────────────────────────────────
+
+func main() {
+	sm, err := buildStateMachine()
+	if err != nil {
+		log.Fatalf("初始化失败: %v", err)
+	}
+
+	ctx := context.Background()
+	order := &OrderPayload{
+		OrderID: "ORD-001",
+		State:   StateCreated,
+	}
+
+	// 检查是否可以触发
+	if err := sm.CanFire(ctx, order, TriggerPay); err != nil {
+		log.Fatalf("不可触发: %v", err)
+	}
+
+	// 触发状态转换
+	payload, err := sm.Fire(ctx, order, TriggerPay)
+	if err != nil {
+		log.Fatalf("触发失败: %v", err)
+	}
+	order = payload.(*OrderPayload)
+	log.Printf("当前状态: %s", order.GetState()) // Paid
+
+	// 枚举当前可用触发器
+	triggers, err := sm.EnumerateActiveTriggers(order)
+	if err != nil {
+		log.Fatalf("枚举失败: %v", err)
+	}
+	log.Printf("可用触发器: %v", triggers) // [Ship Cancel]
+}
+```
+
+几个要点提示一下：
+
+**`GetState()` 返回值依赖手动更新**，plinko 不会自动修改 Payload 里的状态字段，必须在 `OnEntry` 回调里执行 `order.State = t.GetDestination()`，否则下一次 `Fire` 会找不到正确的状态定义。
+
+**终态配置了 `OnEntry` 也完全合法**，如 `StateCancelled` 示例所示，`AsTerminal` 只影响编译期的警告检查，不影响回调执行。
+
+**`OnError` 返回值决定错误传播行为**：返回原 `err` 则调用方的 `Fire` 收到错误；返回 `nil` 则错误被吞掉，`Fire` 正常返回，需根据业务选择。
+
+核心原则：**所有 `Permit` 指向的状态必须被 `Configure`；每个状态和触发器组合只定义一次；`Compile()` 的结果必须检查 `CompileError`。**
