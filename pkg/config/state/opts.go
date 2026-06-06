@@ -6,7 +6,7 @@
  */
 package state
 
-import "github.com/shipt/plinko"
+import "github.com/drkisler/plinko"
 
 func WithName(name string) func(*plinko.StateConfig) {
 	return func(c *plinko.StateConfig) {

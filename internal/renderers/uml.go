@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shipt/plinko"
+	"github.com/drkisler/plinko"
 )
 
 type UML struct {

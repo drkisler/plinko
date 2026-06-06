@@ -1,4 +1,4 @@
-module github.com/shipt/plinko
+module github.com/drkisler/plinko
 
 go 1.16
 

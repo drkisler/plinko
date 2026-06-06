@@ -13,9 +13,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/composition"
-	"github.com/shipt/plinko/internal/sideeffects"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/composition"
+	"github.com/drkisler/plinko/internal/sideeffects"
 )
 
 type plinkoStateMachine struct {

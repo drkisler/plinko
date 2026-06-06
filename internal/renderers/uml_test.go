@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/shipt/plinko/internal/renderers"
-	"github.com/shipt/plinko/pkg/config"
+	"github.com/drkisler/plinko/internal/renderers"
+	"github.com/drkisler/plinko/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 

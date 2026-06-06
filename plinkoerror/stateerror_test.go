@@ -10,7 +10,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/shipt/plinko"
+	"github.com/drkisler/plinko"
 	"github.com/stretchr/testify/assert"
 )
 

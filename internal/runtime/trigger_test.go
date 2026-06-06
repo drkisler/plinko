@@ -11,8 +11,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/plinkoerror"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/plinkoerror"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,7 +9,7 @@ package plinkoerror
 import (
 	"fmt"
 
-	"github.com/shipt/plinko"
+	"github.com/drkisler/plinko"
 )
 
 func CreatePlinkoPanicError(pn interface{}, t plinko.TransitionInfo, step int, name string, stack string) error {

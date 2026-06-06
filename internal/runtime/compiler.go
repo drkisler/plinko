@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/renderers"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/renderers"
 )
 
 func (pd PlinkoDefinition) Compile() plinko.CompilerOutput {

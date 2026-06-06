@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/sideeffects"
-	"github.com/shipt/plinko/plinkoerror"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/sideeffects"
+	"github.com/drkisler/plinko/plinkoerror"
 )
 
 func (psm plinkoStateMachine) EnumerateActiveTriggers(payload plinko.Payload) ([]plinko.Trigger, error) {

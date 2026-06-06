@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/runtime"
-	"github.com/shipt/plinko/pkg/config/operation"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/runtime"
+	"github.com/drkisler/plinko/pkg/config/operation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

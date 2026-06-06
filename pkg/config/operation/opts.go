@@ -7,7 +7,7 @@
 package operation
 
 import (
-	"github.com/shipt/plinko"
+	"github.com/drkisler/plinko"
 )
 
 func WithName(name string) func(*plinko.OperationConfig) {

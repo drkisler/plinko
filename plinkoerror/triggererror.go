@@ -6,7 +6,7 @@
  */
 package plinkoerror
 
-import "github.com/shipt/plinko"
+import "github.com/drkisler/plinko"
 
 type PlinkoTriggerError struct {
 	plinko.Trigger

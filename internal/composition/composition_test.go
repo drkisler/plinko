@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/sideeffects"
-	"github.com/shipt/plinko/plinkoerror"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/sideeffects"
+	"github.com/drkisler/plinko/plinkoerror"
 	"github.com/stretchr/testify/assert"
 )
 

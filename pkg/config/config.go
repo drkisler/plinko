@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/runtime"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/runtime"
 )
 
 // CreatePlinkoDefinition ... creates a new structure used in defining the state machine.

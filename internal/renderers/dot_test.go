@@ -10,10 +10,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/shipt/plinko"
-	"github.com/shipt/plinko/internal/renderers"
-	"github.com/shipt/plinko/pkg/config"
-	"github.com/shipt/plinko/pkg/config/state"
+	"github.com/drkisler/plinko"
+	"github.com/drkisler/plinko/internal/renderers"
+	"github.com/drkisler/plinko/pkg/config"
+	"github.com/drkisler/plinko/pkg/config/state"
 	"github.com/stretchr/testify/assert"
 )
 
